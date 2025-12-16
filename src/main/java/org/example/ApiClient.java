@@ -16,7 +16,7 @@ public class ApiClient {
     }
 
     // Metodo comune per evitare ripetizioni
-    private HttpResponse<String> sendRequest(HttpRequest req){
+    public HttpResponse<String> sendRequest(HttpRequest req){
         HttpResponse<String> response;
         try{
             response = client.send(req, HttpResponse.BodyHandlers.ofString());
@@ -26,7 +26,7 @@ public class ApiClient {
         return response;
     }
 
-    private HttpRequest getRequest(String url, String method, String body) {
+    public HttpRequest getRequest(String url, String method, String body, String authToken) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(java.net.URI.create(url))
                 .header("Content-Type", "application/json");
@@ -35,6 +35,9 @@ public class ApiClient {
             builder.method(method, HttpRequest.BodyPublishers.noBody());
         else
             builder.method(method, HttpRequest.BodyPublishers.ofString(body));
+
+        if(authToken != null && !authToken.isEmpty())
+            builder.header("Authorization", authToken);
 
         return builder.build();
     }
