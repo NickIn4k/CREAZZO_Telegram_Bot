@@ -4,7 +4,7 @@ public class Result {
     public int position;
     public String positionText;
     public Driver Driver;
-    public Constructor Constructor;
+    public Constructor constructor;
     public int grid;
     public int laps;
     public String status;
@@ -25,7 +25,7 @@ public class Result {
                 position,
                 Driver != null ? Driver.givenName : "N/A",
                 Driver != null ? Driver.familyName : "N/A",
-                Constructor != null ? Constructor.name : "N/A",
+                constructor != null ? constructor.name : "N/A",
                 grid,
                 laps,
                 status != null ? status : "N/A",

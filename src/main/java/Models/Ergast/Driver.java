@@ -3,7 +3,6 @@ package Models.Ergast;
 public class Driver {
     public String driverId;
     public String permanentNumber;
-    public String code;
     public String url;
     public String givenName;
     public String familyName;
@@ -14,9 +13,17 @@ public class Driver {
     @Override
     public String toString() {
         return """
-           👤 Pilota: %s %s
-           🇨🇳 Nazionalità: %s
-           🏎 Numero: %s
-           """.formatted(givenName, familyName, nationality, permanentNumber);
+       👤 Pilota: %s %s
+       🇨🇳 Nazionalità: %s
+       🏎 Numero: %s
+       🎂 Data di nascita: %s
+       """.formatted(
+                givenName != null ? givenName : "N/A",
+                familyName != null ? familyName : "N/A",
+                nationality != null ? nationality : "N/A",
+                permanentNumber != null ? permanentNumber : "N/A",
+                dateOfBirth != null ? dateOfBirth : "N/A"
+        );
     }
+
 }

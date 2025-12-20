@@ -1,7 +1,6 @@
 package org.example;
 
 import Models.Ergast.MRData;
-import Models.Ergast.Race;
 import Services.ErgastApi;
 import Services.PexelsApi;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -252,18 +251,18 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             return;
         }
 
-        String command = String.join(" ", args).toLowerCase();
         ErgastApi ergastApi = new ErgastApi();
 
-        switch (command) {
+        switch (args[0].toLowerCase()) {
             case "next":
                 f1Next(ergastApi, chatId);
                 break;
             case "last":
+                if(args.length >= 2 && args[1].toLowerCase().equals("results")){
+                    f1LastResults(ergastApi, chatId);
+                    break;
+                }
                 f1Last(ergastApi, chatId);
-                break;
-            case "last results":
-                f1LastResults(ergastApi, chatId);
                 break;
             case "drivers":
                 MRData drivers = ergastApi.getDriverStandings();
@@ -274,31 +273,19 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 send(constructors.StandingsTable.toString(), chatId, true);
                 break;
             case "calendar":
-                int year = java.time.Year.now().getValue();
-                if (args.length >= 2) {
-                    try {
-                        year = Integer.parseInt(args[1]);
-                    }
-                    catch (NumberFormatException e) {
-                        System.err.println("Error: " + e.getMessage());
-                    }
-                }
-                MRData calendar = ergastApi.getCalendar(year);
-                send(calendar.RaceTable.toString(), chatId, true);
+                if(args.length >= 2)
+                    f1Calendar(ergastApi,chatId,args[1]);
+                else
+                    send("❌ Devi specificare un anno", chatId, false);
                 break;
             case "driver":
-                if (args.length < 2) {
+                if (args.length >= 2)
+                    f1Driver(ergastApi,chatId,args[1]);
+                else
                     send("❌ Devi specificare un pilota", chatId, false);
-                    break;
-                }
-                // driverId è il nome del pilota => utilizzabile per una foto
-                String driverId = args[1];
-                MRData driver = ergastApi.getDriver(driverId);
-                send(driver.DriverTable.Drivers.get(0).toString(), chatId, true);
                 break;
             case "teams":
-                MRData teams = ergastApi.getConstructors();
-                send(teams.ConstructorTable.Constructors.toString(), chatId, true);
+                f1Teams(ergastApi, chatId);
                 break;
 
             default:
@@ -327,7 +314,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         if (lastResults != null && lastResults.RaceTable != null && !lastResults.RaceTable.Races.isEmpty()) {
             var race = lastResults.RaceTable.Races.get(0);
 
-            String output = String.format("🏁 Risultati Ultima Gara - %s, Round %s\n", race.raceName, lastResults.RaceTable.round);
+            String output = String.format("🏁 Risultati Ultima Gara - %s, Round %s\n\n", race.raceName, lastResults.RaceTable.round);
 
             for (var r : race.Results)
                 output += r.toString() + "\n";
@@ -336,6 +323,39 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         }
         else
             send("😕 Nessun risultato ultima gara", chatId, false);
+    }
+
+    private void f1Calendar(ErgastApi ergastApi, long chatId, String sYear) {
+        int year = java.time.Year.now().getValue();
+
+        try {
+            year = Integer.parseInt(sYear);
+        }
+        catch (NumberFormatException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+
+        MRData calendar = ergastApi.getCalendar(year);
+        send(calendar.RaceTable.toString(), chatId, true);
+    }
+
+    private void f1Driver(ErgastApi ergastApi, long chatId, String id) {
+        MRData driver = ergastApi.getDriver(id);
+        send(driver.DriverTable.Drivers.get(0).toString(), chatId, true);
+    }
+
+    private void f1Teams(ErgastApi ergastApi, long chatId) {
+        MRData teams = ergastApi.getConstructors();
+        String msg = "<b>Lista di tutti i Team F1</b> \n\n";
+
+        if(teams != null && teams.ConstructorTable != null) {
+            var constructors = teams.ConstructorTable.Constructors;
+
+            for(var c :  constructors)
+                msg +=  c.toString() + "\n";
+        }
+
+        send(msg, chatId, true);
     }
 
     // Metodi extra per evitare ripetizione codice

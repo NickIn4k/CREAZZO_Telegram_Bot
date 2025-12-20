@@ -10,8 +10,8 @@ public class Constructor {
     @Override
     public String toString() {
         return """
-           🏎 Team: %s
-           🇨🇳 Nazionalità: %s
+           🏎 Team: <b>%s</b>
+           🏳️ Nazionalità: %s
            """.formatted(name, nationality);
     }
 }
