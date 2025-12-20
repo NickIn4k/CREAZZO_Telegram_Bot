@@ -1,6 +1,7 @@
 package Services;
 
 import Photo.Classes.PexelsResponse;
+import Photo.Classes.PexelsVideoResponse;
 import com.google.gson.Gson;
 import org.example.ApiClient;
 import org.example.StandardConfig;
@@ -42,13 +43,31 @@ public class PexelsApi {
         String json = searchPhoto(query);
         PexelsResponse response = gson.fromJson(json, PexelsResponse.class);
 
-        if(response.photos == null || response.photos.isEmpty()){
+        if(response.photos == null || response.photos.isEmpty())
             return null;
-        }
 
-        // dalla lista di foto estrai una foto, poi il suo src, quindi il suo medium url
+        // Dalla lista di foto estrai una foto, poi il suo src, quindi il suo medium url
         Random rnd = new Random();
         int index = rnd.nextInt(response.photos.size());
         return response.photos.get(index).src.medium;
+    }
+
+    public String getVideoUrl(String query) {
+        String json = searchVideo(query);
+        PexelsVideoResponse response = gson.fromJson(json, PexelsVideoResponse.class);
+
+        if (response.videos == null || response.videos.isEmpty())
+            return null;
+
+        // Come per le foto
+        Random rnd = new Random();
+        int index = rnd.nextInt(response.videos.size());
+        PexelsVideoResponse.Video video = response.videos.get(index);
+
+        if (video.video_files == null || video.video_files.isEmpty())
+            return null;
+
+        // Prendi il primo file video disponibile
+        return video.video_files.get(0).link;
     }
 }
