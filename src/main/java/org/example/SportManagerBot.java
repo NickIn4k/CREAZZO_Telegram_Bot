@@ -117,19 +117,19 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     Scegli uno dei comandi:
                     
                     🏁  <b>next</b> – Prossima gara
-                      
+                    
                     ⏮️  <b>last</b> – Ultima gara
-                      
+                    
                     📊  <b>last results</b> – Classifica ultima gara
-                      
+                    
                     👤  <b>drivers</b> – WDC aggiornata
-                      
-                    🏎️  <b>constructors</b> – WCC aggiornata 
-                      
+                    
+                    🏎️  <b>constructors</b> – WCC aggiornata
+                   
                     📅  <b>calendar &lt;anno&gt;</b> – Calendario stagione
-                      
+                   
                     👤  <b>driver &lt;nome&gt;</b> – Info su un pilota
-                      
+                    
                     🏢  <b>teams</b> – Lista dei team attuali
                 
                     ℹ️  Maggiori info con il comando <b>/help</b>
@@ -258,7 +258,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 f1Next(ergastApi, chatId);
                 break;
             case "last":
-                if(args.length >= 2 && args[1].toLowerCase().equals("results")){
+                if(args.length >= 2 && args[1].equalsIgnoreCase("results")){
                     f1LastResults(ergastApi, chatId);
                     break;
                 }
@@ -296,7 +296,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     private void f1Next(ErgastApi ergastApi, long chatId) {
         MRData nextRaceData = ergastApi.getNextRace();
         if (nextRaceData != null && nextRaceData.RaceTable != null && !nextRaceData.RaceTable.Races.isEmpty())
-            send(nextRaceData.RaceTable.Races.get(0).toString(), chatId, true);
+            send(nextRaceData.RaceTable.Races.getFirst().toString(), chatId, true);
         else
             send("😕 Nessuna prossima gara trovata", chatId, false);
     }
@@ -304,7 +304,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     private void f1Last(ErgastApi ergastApi, long chatId) {
         MRData lastRaceData = ergastApi.getLastRace();
         if (lastRaceData != null && lastRaceData.RaceTable != null && !lastRaceData.RaceTable.Races.isEmpty())
-            send(lastRaceData.RaceTable.Races.get(0).toString(), chatId, true);
+            send(lastRaceData.RaceTable.Races.getFirst().toString(), chatId, true);
         else
             send("😕 Nessuna ultima gara trovata", chatId, false);
     }
@@ -312,7 +312,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     private void f1LastResults(ErgastApi ergastApi, long chatId){
         MRData lastResults = ergastApi.getLastRaceResults();
         if (lastResults != null && lastResults.RaceTable != null && !lastResults.RaceTable.Races.isEmpty()) {
-            var race = lastResults.RaceTable.Races.get(0);
+            var race = lastResults.RaceTable.Races.getFirst();
 
             String output = String.format("🏁 Risultati Ultima Gara - %s, Round %s\n\n", race.raceName, lastResults.RaceTable.round);
 
@@ -341,7 +341,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
     private void f1Driver(ErgastApi ergastApi, long chatId, String id) {
         MRData driver = ergastApi.getDriver(id);
-        send(driver.DriverTable.Drivers.get(0).toString(), chatId, true);
+        send(driver.DriverTable.Drivers.getFirst().toString(), chatId, true);
     }
 
     private void f1Teams(ErgastApi ergastApi, long chatId) {
