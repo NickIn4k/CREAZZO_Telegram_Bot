@@ -9,4 +9,14 @@ public class Driver {
     public String familyName;
     public String dateOfBirth;
     public String nationality;
+
+    // Utilizzo di formatted() => gestione simile ai prepared statements!
+    @Override
+    public String toString() {
+        return """
+           👤 Pilota: %s %s
+           🇨🇳 Nazionalità: %s
+           🏎 Numero: %s
+           """.formatted(givenName, familyName, nationality, permanentNumber);
+    }
 }

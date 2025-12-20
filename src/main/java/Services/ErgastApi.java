@@ -5,19 +5,16 @@ import com.google.gson.Gson;
 import org.example.ApiClient;
 
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 public class ErgastApi {
     private static final String f1_url = "https://ergast.com/api/f1";
-
-    private static final String BASE_URL = "https://ergast.com/api/f1";
     private final ApiClient apiClient = new ApiClient();
     private final Gson gson = new Gson();
 
     public ErgastApi() {}
 
     private String getString(String endpoint) {
-        String url = BASE_URL + endpoint + ".json"; // tutti gli URL finiscono con .json
+        String url = f1_url + endpoint + ".json"; // tutti gli URL finiscono con .json
         HttpRequest req = apiClient.getRequest(url, "GET", null, null);
         return apiClient.sendRequest(req).body();
     }
