@@ -1,6 +1,5 @@
 package org.example;
 
-import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -8,11 +7,9 @@ import java.net.http.HttpResponse;
 
 public class ApiClient {
     private final HttpClient client;
-    private final Gson gson;
 
     public ApiClient() {
         this.client = HttpClient.newHttpClient();
-        this.gson = new Gson();
     }
 
     // Metodo comune per evitare ripetizioni

@@ -22,7 +22,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
     // Sport supportati
     private static final String[] sportAccepted = {
-            "f1", "calcio", "soccer",
+            "f1", "soccer",
             "basketball", "wec", "motorsport"
     };
 
@@ -140,20 +140,13 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void sendPhoto(String query, long chatId) {
-        String normalizedQuery = query.toLowerCase();
+        String betterQuery = stringNormalization(query);
 
-        if (!Arrays.asList(sportAccepted).contains(normalizedQuery)) {
-            send("""
-            😤 Sport non valido!
-            
-            Sport disponibili:
-            F1, Motorsport, WEC, Calcio, Basketball
-            """, chatId, false);
+        if(!checkMediaErrorMessage(betterQuery, chatId))
             return;
-        }
 
         PexelsApi pexelsApi = new PexelsApi();
-        String url = pexelsApi.getPhotoUrl(normalizedQuery);
+        String url = pexelsApi.getPhotoUrl(betterQuery);
 
         if (url == null || url.isEmpty()) {
             send("😕 Nessuna immagine trovata", chatId, false);
@@ -174,23 +167,16 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void sendVideo(String query, long chatId) {
-        String normalizedQuery = query.toLowerCase();
+        String betterQuery = stringNormalization(query);
 
-        if (!Arrays.asList(sportAccepted).contains(normalizedQuery)) {
-            send("""
-            😤 Sport non valido!
-            
-            Sport disponibili:
-            F1, Motorsport, WEC, Calcio, Basketball
-            """, chatId, false);
+        if(!checkMediaErrorMessage(betterQuery, chatId))
             return;
-        }
 
         PexelsApi pexelsApi = new PexelsApi();
-        String url = pexelsApi.getVideoUrl(normalizedQuery);
+        String url = pexelsApi.getVideoUrl(betterQuery);
 
         if (url == null || url.isEmpty()) {
-            send("😕 Nessuna video trovato", chatId, false);
+            send("😕 Nessun video trovato", chatId, false);
             return;
         }
 
@@ -221,5 +207,30 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         } catch (TelegramApiException e) {
             System.err.println("Error: " + e.getMessage());
         }
+    }
+
+    private String stringNormalization(String in){
+        String betterQuery = in.toLowerCase();
+
+        if (betterQuery.equals("calcio"))
+            return "soccer";
+
+        if (betterQuery.equals("basket"))
+            return "basketball";
+
+        return betterQuery;
+    }
+
+    private boolean checkMediaErrorMessage(String in,  long chatId) {
+        if (!Arrays.asList(sportAccepted).contains(in)) {
+            send("""
+            😤 Sport non valido!
+            
+            Sport disponibili:
+            F1, Motorsport, WEC, Calcio, Basketball
+            """, chatId, false);
+            return false;
+        }
+        return true;
     }
 }

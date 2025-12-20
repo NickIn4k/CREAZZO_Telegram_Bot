@@ -1,4 +1,4 @@
-package Photo.Classes;
+package Models;
 
 public class Photo {
     private int id;

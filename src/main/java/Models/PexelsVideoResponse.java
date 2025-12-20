@@ -1,4 +1,4 @@
-package Photo.Classes;
+package Models;
 
 import java.util.List;
 

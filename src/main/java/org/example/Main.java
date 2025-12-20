@@ -8,7 +8,7 @@ public class Main {
 
         try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
             botsApplication.registerBot(botToken, new SportManagerBot(botToken));
-            System.out.println("TrainingBot successfully started!");
+            System.out.println("SportManagerBot successfully started!");
             Thread.currentThread().join();
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());

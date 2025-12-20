@@ -1,4 +1,4 @@
-package Photo.Classes;
+package Models;
 
 public class Src {
     private String original;

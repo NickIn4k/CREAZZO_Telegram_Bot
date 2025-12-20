@@ -1,7 +1,7 @@
 package Services;
 
-import Photo.Classes.PexelsResponse;
-import Photo.Classes.PexelsVideoResponse;
+import Models.PexelsResponse;
+import Models.PexelsVideoResponse;
 import com.google.gson.Gson;
 import org.example.ApiClient;
 import org.example.StandardConfig;
