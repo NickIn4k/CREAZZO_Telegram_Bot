@@ -36,8 +36,11 @@ public class TheSportsDbApi {
         return gson.fromJson(json, EventsResponse.class);
     }
 
+    /* NON è WEC, può tornare utile per il calcio
     public TeamsResponse getTeams() {
         String json = getString("/lookup_all_teams.php?id=" + wec_id);
         return gson.fromJson(json, TeamsResponse.class);
     }
+
+     */
 }

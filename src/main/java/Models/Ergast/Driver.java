@@ -17,12 +17,14 @@ public class Driver {
        🏳️ Nazionalità: %s
        🏎 Numero: %s
        🎂 Data di nascita: %s
+       🔗 Link: %s
        """.formatted(
                 givenName != null ? givenName : "N/A",
                 familyName != null ? familyName : "N/A",
                 nationality != null ? nationality : "N/A",
                 permanentNumber != null ? permanentNumber : "N/A",
-                dateOfBirth != null ? dateOfBirth : "N/A"
+                dateOfBirth != null ? dateOfBirth : "N/A",
+                url != null ? url : "N/A"
         );
     }
 

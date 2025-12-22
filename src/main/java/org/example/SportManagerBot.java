@@ -1,8 +1,12 @@
 package org.example;
 
 import Models.Ergast.MRData;
+import Models.TheSportsDb.EventsResponse;
+import Models.TheSportsDb.Team;
+import Models.TheSportsDb.TeamsResponse;
 import Services.ErgastApi;
 import Services.PexelsApi;
+import Services.TheSportsDbApi;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -10,6 +14,9 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -74,6 +81,13 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             return;
         }
 
+        if (state == BotState.waiting_wec) {
+            userStates.put(chatId, BotState.none);
+            String[] wecArgs = messageText.split(" ");
+            handleWecCommand(wecArgs, chatId);
+            return;
+        }
+
         String[] args = messageText.split(" ");
 
         String mediaMsg = """
@@ -131,7 +145,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                    
                     👤  <b>driver &lt;nome&gt;</b> – Info su un pilota
                     
-                    🏢  <b>teams</b> – Lista dei team attuali
+                    🏢  <b>teams</b> – Lista dei team
                 
                     ℹ️  Maggiori info con il comando <b>/help</b>
                     """;
@@ -140,6 +154,26 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     // Elimina il primo elemento da args => non tiene più conto di "/f1"
                     args = Arrays.copyOfRange(args, 1, args.length);
                     handleF1Command(args, chatId);
+                }
+                break;
+            case "/wec":
+                if (args.length == 1) {
+                    userStates.put(chatId, BotState.waiting_wec);
+                    String msg = """
+                    🏎️  <b>Comandi WEC</b>
+                
+                    Scegli uno dei comandi:
+                    
+                    🏁  <b>next</b> – Prossima gara
+                    
+                    ⏮️  <b>last</b> – Ultima gara
+                    
+                    📊  <b>seasons &lt;anno&gt;</b> – Stagione dell'anno scelto
+                    """;
+                    send(msg, chatId, true);
+                } else {
+                    args = Arrays.copyOfRange(args, 1, args.length); // rimuovo "/wec"
+                    handleWecCommand(args, chatId);
                 }
                 break;
             default:
@@ -164,33 +198,37 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
     private void helpMessage(long chatId) {
         String msg = """
-            📖  <b>Comandi disponibili</b>
-            
-            <b>/start</b> – Avvia il bot
-            <b>/help</b> – Mostra questo messaggio
-            
-            📸  <b>Foto e Video</b>
-            
-            <b>/photo &lt;sport&gt;</b> – Ricevi un’immagine sportiva
-            <b>/video &lt;sport&gt;</b> – Ricevi un video sportivo
-            
-            🏎️  <b>Formula 1</b>
-            
-            <b>/f1 next</b> – Prossima gara
-            <b>/f1 last</b> – Ultima gara
-            <b>/f1 last results</b> – Classifica ultima gara
-            <b>/f1 drivers</b> – WDC aggiornata
-            <b>/f1 constructors</b> – WCC aggiornata
-            <b>/f1 calendar &lt;anno&gt;</b> – Calendario stagione
-            <b>/f1 driver &lt;nome&gt;</b> – Info pilota
-            <b>/f1 teams</b> – Lista dei team attuali
-            
-            🏋️  <b>Personal Trainer</b>
-            
-            ⚠️  Sport supportati: F1, Motorsport, WEC, Calcio, Basketball
-            """;
+        📖 <b>Comandi disponibili</b>
+        
+        <b>/start</b> – Avvia il bot
+        <b>/help</b> – Mostra questo messaggio
+        
+        📸 <b>Foto e Video</b>
+        <b>/photo &lt;sport&gt;</b> – Ricevi un’immagine sportiva
+        <b>/video &lt;sport&gt;</b> – Ricevi un video sportivo
+        
+        🏎️ <b>Formula 1</b>
+        /f1 next – Prossima gara
+        /f1 last – Ultima gara
+        /f1 last results – Classifica ultima gara
+        /f1 drivers – WDC aggiornata
+        /f1 constructors – WCC aggiornata
+        /f1 calendar &lt;anno&gt; – Calendario stagione
+        /f1 driver &lt;nome&gt; – Info pilota
+        /f1 teams – Lista dei team
+        
+        🏎 <b>WEC</b>
+        /wec next – Prossima gara
+        /wec last – Ultima gara
+        /wec seasons &lt;anno&gt; – Stagione dell'anno scelto
+        /wec teams – Lista dei team
+        
+        🏋️ <b>Personal Trainer</b>
+        ⚠️ Sport supportati: F1, Motorsport, WEC, Calcio, Basketball
+        """;
         send(msg, chatId, true);
     }
+
 
     private void sendPhoto(String query, long chatId) {
         String betterQuery = stringNormalization(query);
@@ -318,7 +356,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             String output = String.format("🏁 Risultati Ultima Gara - %s, Round %s\n\n", race.raceName, lastResults.RaceTable.round);
 
             for (var r : race.Results)
-                output += r.toString() + "\n";
+                output = output.concat(r.toString() + "\n");
 
             send(output, chatId, true);
         }
@@ -341,22 +379,109 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void f1Driver(ErgastApi ergastApi, long chatId, String id) {
-        MRData driver = ergastApi.getDriver(id);
-        send(driver.DriverTable.Drivers.getFirst().toString(), chatId, true);
+        MRData data = ergastApi.getDriver(id);
+
+        if (data == null || data.DriverTable == null ||
+                data.DriverTable.Drivers == null || data.DriverTable.Drivers.isEmpty()) {
+            send("😕 Pilota non trovato", chatId, false);
+            return;
+        }
+
+        var driver = data.DriverTable.Drivers.getFirst();
+        String wikiUrl = driver.url != null ? driver.url : "https://it.wikipedia.org/wiki/f1";
+
+        SendMessage message = SendMessage.builder()
+                .chatId(chatId)
+                .text(driver.toString())
+                .replyMarkup(buildLinkButton("🏢 Wikipedia: ".concat(driver.familyName), wikiUrl))
+                .build();
+
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
     }
 
     private void f1Teams(ErgastApi ergastApi, long chatId) {
         MRData teams = ergastApi.getConstructors();
-        String msg = "<b>Lista di tutti i Team F1</b> \n\n";
 
-        if(teams != null && teams.ConstructorTable != null) {
-            var constructors = teams.ConstructorTable.Constructors;
-
-            for(var c :  constructors)
-                msg +=  c.toString() + "\n";
+        if (teams == null || teams.ConstructorTable == null || teams.ConstructorTable.Constructors == null || teams.ConstructorTable.Constructors.isEmpty()) {
+            send("😕 Nessun team trovato", chatId, false);
+            return;
         }
 
-        send(msg, chatId, true);
+        for (var constructor : teams.ConstructorTable.Constructors) {
+            SendMessage message = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(constructor.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(buildLinkButton("🏢 Wikipedia: ".concat(constructor.name), constructor.url))
+                    .build();
+            try {
+                telegramClient.execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("Errore invio team: " + e.getMessage());
+            }
+        }
+    }
+
+    private void handleWecCommand(String[] args, long chatId) {
+        if(args.length == 0) {
+            send("❌ Devi specificare un comando WEC", chatId, false);
+            return;
+        }
+
+        TheSportsDbApi wecApi = new TheSportsDbApi();
+
+        switch(args[0].toLowerCase()) {
+            case "next":
+                wecNext(wecApi, chatId);
+                break;
+            case "last":
+                wecLast(wecApi, chatId);
+                break;
+            case "seasons":
+                if(args.length >= 2)
+                    wecSeason(wecApi, chatId, args[1]);
+                else
+                    send("❌ Devi specificare una stagione", chatId, false);
+                break;
+            default:
+                send("❌ Comando WEC non riconosciuto", chatId, false);
+                break;
+        }
+    }
+
+    private void wecNext(TheSportsDbApi wecApi, long chatId){
+        EventsResponse resp = wecApi.getNextEvents();
+
+        if(resp == null || resp.events == null || resp.events.isEmpty()) {
+            send("😕 Nessun evento trovato", chatId, false);
+            return;
+        }
+
+        send(resp.toString(), chatId, true);
+    }
+
+    private void wecLast(TheSportsDbApi wecApi, long chatId){
+        EventsResponse resp = wecApi.getLastEvents();
+
+        if(resp == null || resp.events == null || resp.events.isEmpty()) {
+            send("😕 Nessun evento trovato", chatId, false);
+            return;
+        }
+
+        send(resp.toString(), chatId, true);
+    }
+
+    private void wecSeason(TheSportsDbApi wecApi, long chatId, String season) {
+        EventsResponse resp = wecApi.getSeasonEvents(season);
+        if(resp == null || resp.events == null || resp.events.isEmpty()) {
+            send("😕 Nessun evento trovato per la stagione " + season, chatId, false);
+            return;
+        }
+        send(resp.toString(), chatId, true);
     }
 
     // Metodi extra per evitare ripetizione codice
@@ -398,5 +523,37 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             return true;
         }
         return false;
+    }
+
+    private InlineKeyboardMarkup buildLinkButton(String text, String url) {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(
+                        new InlineKeyboardRow(
+                                InlineKeyboardButton.builder()
+                                        .text(text)
+                                        .url(url)
+                                        .build()
+                        )
+                )
+                .build();
+    }
+
+
+    private void sendContentPicture(String in, String url, long chatId) {
+        if (in != null && url !=null && !in.isEmpty() && !url.isEmpty()) {
+            try {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(chatId)
+                                .photo(new InputFile(url))
+                                .caption(in)
+                                .build()
+                );
+            } catch (TelegramApiException e) {
+                System.err.println("Errore invio: " + e.getMessage());
+            }
+        } else {
+            send(in, chatId, true);
+        }
     }
 }
