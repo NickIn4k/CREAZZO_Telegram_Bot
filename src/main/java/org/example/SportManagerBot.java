@@ -33,7 +33,8 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         none,
         waiting_photo,
         waiting_video,
-        waiting_f1
+        waiting_f1,
+        waiting_wec
     }
 
     // Costruttore

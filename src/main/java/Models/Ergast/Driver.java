@@ -14,7 +14,7 @@ public class Driver {
     public String toString() {
         return """
        👤 Pilota: %s %s
-       🇨🇳 Nazionalità: %s
+       🏳️ Nazionalità: %s
        🏎 Numero: %s
        🎂 Data di nascita: %s
        """.formatted(

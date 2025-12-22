@@ -9,7 +9,7 @@ public class StandingsTable {
 
     @Override
     public String toString() {
-        String output = "🏆 Classifica Piloti - Stagione " + season + ", Round " + round + "\n\n";
+        String output = "🏆 Classifica 🏆 - Stagione " + season + ", Round " + round + "\n\n";
 
         if (StandingsLists != null) {
             for (StandingsList sl : StandingsLists) {
