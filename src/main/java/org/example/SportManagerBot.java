@@ -177,7 +177,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     🏁  <b>next</b> – Prossima gara
                     ⏮️  <b>last</b> – Ultima gara
                     📊  <b>seasons &lt;anno&gt;</b> – Stagione dell'anno scelto
-                    🏢  <b>team &lt;nome&gt;</b> – Info su un team
+                    🏢  <b>car &lt;team&gt; &lt;modello&gt;</b> – Info sul modello scelto
                     
                     ℹ️  Maggiori info con il comando <b>/help</b>
                     """;
@@ -292,7 +292,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         /wec next – Prossima gara
         /wec last – Ultima gara
         /wec seasons &lt;anno&gt; – Stagione dell'anno scelto
-        /wec team &lt;nome&gt – Info team
+        /wec car &lt;team&gt; &lt;modello&gt; – Info sul modello scelto
         
         🏀 <b>Basket NBA</b>
         /basket players – Lista giocatori (prima pagina)
@@ -314,7 +314,20 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         🏋️ <b>Personal Trainer</b>
         ⚠️ Sport supportati: F1, Motorsport, WEC, Calcio, Basketball
         """;
-        send(msg, chatId, true);
+        String[] commands = {"/photo", "/video", "/f1", "/wec", "/basket", "/soccer", "/training"};
+        InlineKeyboardMarkup kb = buildCommandKeyboard(commands);
+
+        SendMessage message = SendMessage.builder()
+                        .chatId(chatId)
+                        .text(msg)
+                        .parseMode("HTML")
+                        .replyMarkup(kb)
+                        .build();
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("Errore invio help: " + e.getMessage());
+        }
     }
 
     //#region Pexels API
@@ -488,7 +501,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         }
 
         var driver = data.DriverTable.Drivers.getFirst();
-        String wikiUrl = driver.url != null && !driver.url.isBlank() ? driver.url : "https://it.wikipedia.org/wiki/f1";
+        String wikiUrl = driver.url != null && !driver.url.isEmpty() ? driver.url : "https://it.wikipedia.org/wiki/f1";
 
         WikipediaSummaryResponse resp = wikiService.getFromUrl(wikiUrl);
 
@@ -496,7 +509,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         String text = driver.toString();
 
         if (resp != null) {
-            if (resp.extract != null && !resp.extract.isBlank())
+            if (resp.extract != null && !resp.extract.isEmpty())
                 text = driver.familyName + " " + driver.givenName + "\n\n" + resp.extract;
 
             if (resp.thumbnail != null && resp.thumbnail.source != null)
@@ -628,6 +641,14 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 else
                     send("❌ Devi specificare una stagione", chatId, false);
                 break;
+            case "car":
+                if(args.length >= 2){
+                    String name = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+                    wecSpecificTeam(chatId, name);
+                }
+                else
+                    send("❌ Devi specificare Team e modello!", chatId, false);
+                break;
             default:
                 send("❌ Comando WEC non riconosciuto", chatId, false);
                 break;
@@ -667,6 +688,57 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         }
         send(resp.toString(), chatId, true);
     }
+
+    private void wecSpecificTeam(long chatId, String name) {
+        if (name == null || name.isEmpty()) {
+            send("😕 Nome team non valido", chatId, false);
+            return;
+        }
+
+        WikiSportService wikiService = new WikiSportService();
+
+        // Titolo: "{team}_{modello}"
+        String wikiTitle = name.trim().replace(" ", "_");
+
+        // Recupera la pagina dal titolo
+        WikipediaSummaryResponse resp = wikiService.getFromText(wikiTitle);
+
+        // Fallback
+        String text = name;
+        String imgUrl = null;
+        String wikiLink = "https://it.wikipedia.org/wiki/" + wikiTitle;
+
+        if (resp != null) {
+            if (resp.extract != null && !resp.extract.isEmpty())
+                text = resp.extract;
+
+            if (resp.thumbnail != null && resp.thumbnail.source != null)
+                imgUrl = resp.thumbnail.source;
+
+            // Aggiorna il link per sicurezza
+            if (resp.content_urls != null && resp.content_urls.desktop != null && resp.content_urls.desktop.page != null)
+                wikiLink = resp.content_urls.desktop.page;
+        }else{
+            send("❌ Assicurati di aver usato i nomi corretti!", chatId, false);
+            return;
+        }
+
+        sendContentPicture(null, imgUrl, chatId);
+
+        SendMessage message = SendMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .parseMode("HTML")
+                .replyMarkup(buildLinkButton("🔗 Wikipedia", wikiLink))
+                .build();
+
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("Errore invio messaggio WEC team: " + e.getMessage());
+        }
+    }
+
     //#endregion
 
     //#region BallDontLie API (Basket - NBA)
@@ -1025,6 +1097,33 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 )
                 .build();
     }
+
+    private InlineKeyboardMarkup buildCommandKeyboard(String[] commands) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        InlineKeyboardRow currentRow = new InlineKeyboardRow();
+
+        for (int i = 0; i < commands.length; i++) {
+            String cmd = commands[i];
+
+            InlineKeyboardButton button = InlineKeyboardButton.builder()
+                    .text(cmd)
+                    .switchInlineQueryCurrentChat(cmd + " ")
+                    .build();
+
+            currentRow.add(button);
+
+            // Sono dispari => ultimo elemento
+            if ((i + 1)%2 == 0 || i == commands.length - 1) {
+                rows.add(currentRow);
+                currentRow = new InlineKeyboardRow();
+            }
+        }
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(rows)
+                .build();
+    }
+
 
     private void sendContentPicture(String caption, String url, long chatId) {
         if (url != null && !url.isEmpty()) {
