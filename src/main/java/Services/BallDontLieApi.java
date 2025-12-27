@@ -7,7 +7,9 @@ import com.google.gson.Gson;
 import org.example.ApiClient;
 import org.example.StandardConfig;
 
+import java.net.URLEncoder;
 import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
 
 public class BallDontLieApi {
 
@@ -28,7 +30,8 @@ public class BallDontLieApi {
     }
 
     public PlayersResponse searchPlayers(String name) {
-        String json = get("/players?search=" + name);
+        String encoded = URLEncoder.encode(name, StandardCharsets.UTF_8);
+        String json = get("/players?search=" + encoded);
         return gson.fromJson(json, PlayersResponse.class);
     }
 

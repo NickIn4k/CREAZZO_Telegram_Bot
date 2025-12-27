@@ -79,4 +79,20 @@ public class WikiSportService {
 
         return title;
     }
+
+    public String toWikiCamelCase(String input) {
+        if (input == null || input.isBlank())
+            return input;
+
+        String[] words = input.trim().toLowerCase().split(" ");
+
+        for (int i = 0; i < words.length; i++) {
+            String w = words[i];
+            if (!w.isEmpty())
+                words[i] = w.substring(0, 1).toUpperCase() + w.substring(1);
+        }
+
+        return String.join("_", words);
+    }
+
 }

@@ -229,10 +229,12 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     👥 <b>teams &lt;anno&gt;</b> – Lista squadre
                     👤 <b>players &lt;teamId&gt;</b> – Giocatori di un team
                     🔍 <b>player &lt;playerId&gt;</b> – Info giocatore
+                    🔍 <b>player &lt;nome&gt;</b> – Info giocatore
                     📅 <b>season &lt;anno&gt;</b> – Partite stagione
                     📊 <b>standings &lt;anno&gt;</b> – Classifica aggiornata
                     🏢 <b>team &lt;nome&gt;</b> – Info su un team
-                    ⚠️ <b>Attenzione!</b> anni accettati tra il 2021 e il 2023.
+                    
+                    ⚠️ <b>Attenzione!</b> anni accettati tra il <b>2021</b> e il <b>2023</b>.
             
                     ℹ️ Maggiori info con il comando <b>/help</b>
                     """;
@@ -314,20 +316,8 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         🏋️ <b>Personal Trainer</b>
         ⚠️ Sport supportati: F1, Motorsport, WEC, Calcio, Basketball
         """;
-        String[] commands = {"/photo", "/video", "/f1", "/wec", "/basket", "/soccer", "/training"};
-        InlineKeyboardMarkup kb = buildCommandKeyboard(commands);
 
-        SendMessage message = SendMessage.builder()
-                        .chatId(chatId)
-                        .text(msg)
-                        .parseMode("HTML")
-                        .replyMarkup(kb)
-                        .build();
-        try {
-            telegramClient.execute(message);
-        } catch (TelegramApiException e) {
-            System.err.println("Errore invio help: " + e.getMessage());
-        }
+        send(msg, chatId, true);
     }
 
     //#region Pexels API
@@ -700,43 +690,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         // Titolo: "{team}_{modello}"
         String wikiTitle = name.trim().replace(" ", "_");
 
-        // Recupera la pagina dal titolo
-        WikipediaSummaryResponse resp = wikiService.getFromText(wikiTitle);
-
-        // Fallback
-        String text = name;
-        String imgUrl = null;
-        String wikiLink = "https://it.wikipedia.org/wiki/" + wikiTitle;
-
-        if (resp != null) {
-            if (resp.extract != null && !resp.extract.isEmpty())
-                text = resp.extract;
-
-            if (resp.thumbnail != null && resp.thumbnail.source != null)
-                imgUrl = resp.thumbnail.source;
-
-            // Aggiorna il link per sicurezza
-            if (resp.content_urls != null && resp.content_urls.desktop != null && resp.content_urls.desktop.page != null)
-                wikiLink = resp.content_urls.desktop.page;
-        }else{
-            send("❌ Assicurati di aver usato i nomi corretti!", chatId, false);
-            return;
-        }
-
-        sendContentPicture(null, imgUrl, chatId);
-
-        SendMessage message = SendMessage.builder()
-                .chatId(chatId)
-                .text(text)
-                .parseMode("HTML")
-                .replyMarkup(buildLinkButton("🔗 Wikipedia", wikiLink))
-                .build();
-
-        try {
-            telegramClient.execute(message);
-        } catch (TelegramApiException e) {
-            System.err.println("Errore invio messaggio WEC team: " + e.getMessage());
-        }
+        wikiResponse(wikiService, name, wikiTitle, chatId);
     }
 
     //#endregion
@@ -784,7 +738,14 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 } else
                     send("❌ Devi specificare ulteriori parametri per le partite", chatId, false);
                 break;
-
+            case "team":
+                if(args.length >= 2){
+                    String name = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+                    basketSpecificTeam(chatId, name);
+                }
+                else
+                    send("❌ Devi specificare Team e modello!", chatId, false);
+                break;
             default:
                 send("❌ Comando basket non riconosciuto", chatId, false);
         }
@@ -804,30 +765,53 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void basketPlayerSearch(BallDontLieApi api, long chatId, String name) {
+        if (name == null || name.isBlank()) {
+            send("😕 Nome giocatore non valido", chatId, false);
+            return;
+        }
+
         PlayersResponse resp = api.searchPlayers(name);
         if (resp == null || resp.data == null || resp.data.isEmpty()) {
             send("😕 Nessun giocatore trovato con il nome: " + name, chatId, false);
             return;
         }
 
-        String msg = "🔍 Risultati ricerca giocatore:\n\n";
-        for (Player p : resp.data)
-            msg = msg.concat(p.toString()).concat("\n");
+        // Più risultati => messaggio testuale
+        if (resp.data.size() > 1) {
+            String msg = "🔍 Risultati ricerca giocatore:\n\n";
+            for (Player p : resp.data)
+                msg = msg.concat(p.toString()).concat("\n");
 
-        send(msg, chatId, false);
+            send(msg.toString(), chatId, false);
+            return;
+        }
+
+        // Un solo risultato => maggiori dettagli e foto
+        Player player = resp.data.getFirst();
+        WikiSportService wikiService = new WikiSportService();
+        String wikiTitle = wikiService.toWikiCamelCase(player.first_name + " " + player.last_name);
+
+        wikiResponse(wikiService, player.toString(), wikiTitle, chatId);
     }
-
     private void basketTeams(BallDontLieApi api, long chatId) {
         TeamsResponse resp = api.getTeams();
+        WikiSportService wikiService = new WikiSportService();
+
         if (resp == null || resp.data == null || resp.data.isEmpty()) {
             send("😕 Nessun team trovato", chatId, false);
             return;
         }
 
-        // TBD: logo
-        send("🏀 Lista squadre NBA:\n\n",  chatId, false);
-        for (var t : resp.data)
-            send(t.toString(), chatId, false);
+        send("🏀 Squadre NBA:\n", chatId, false);
+
+        for (var team : resp.data) {
+            if (team.full_name != null && !team.full_name.isEmpty()){
+                String teamName = team.full_name;
+                String wikiTitle = wikiService.toWikiCamelCase(teamName);
+
+                wikiResponse(wikiService, teamName, wikiTitle, chatId);
+            }
+        }
     }
 
     private void basketGamesSeason(BallDontLieApi api, long chatId, int season) {
@@ -858,6 +842,20 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             msg = msg.concat(g.toString()).concat("\n");
 
         send(msg, chatId, false);
+    }
+
+    private void basketSpecificTeam(long chatId, String name) {
+        if (name == null || name.isEmpty()) {
+            send("😕 Nome team non valido", chatId, false);
+            return;
+        }
+
+        WikiSportService wikiService = new WikiSportService();
+
+        // Titolo: "{team}_{modello}"
+        String wikiTitle = wikiService.toWikiCamelCase(name);
+
+        wikiResponse(wikiService, name, wikiTitle, chatId);
     }
     //#endregion
 
@@ -1098,35 +1096,15 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 .build();
     }
 
-    private InlineKeyboardMarkup buildCommandKeyboard(String[] commands) {
-        List<InlineKeyboardRow> rows = new ArrayList<>();
-        InlineKeyboardRow currentRow = new InlineKeyboardRow();
-
-        for (int i = 0; i < commands.length; i++) {
-            String cmd = commands[i];
-
-            InlineKeyboardButton button = InlineKeyboardButton.builder()
-                    .text(cmd)
-                    .switchInlineQueryCurrentChat(cmd + " ")
-                    .build();
-
-            currentRow.add(button);
-
-            // Sono dispari => ultimo elemento
-            if ((i + 1)%2 == 0 || i == commands.length - 1) {
-                rows.add(currentRow);
-                currentRow = new InlineKeyboardRow();
-            }
+    private void sendContentPicture(String caption, String url, long chatId) {
+        // Check di validità => metodo custom
+        if (!isValidTelegramImage(url)) {
+            if (caption != null && !caption.isEmpty())
+                send(caption, chatId, true);
+            return;
         }
 
-        return InlineKeyboardMarkup.builder()
-                .keyboard(rows)
-                .build();
-    }
-
-
-    private void sendContentPicture(String caption, String url, long chatId) {
-        if (url != null && !url.isEmpty()) {
+        if (!url.isEmpty()) {
             try {
                 SendPhoto.SendPhotoBuilder builder = SendPhoto.builder()
                         .chatId(chatId)
@@ -1145,4 +1123,52 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     private Integer getLeagueId(String name) {
         return leaguesMap.get(name.toLowerCase());
     }
+
+    private void wikiResponse(WikiSportService wikiService, String name, String wikiTitle, long chatId){
+        WikipediaSummaryResponse resp = wikiService.getFromText(wikiTitle);
+
+        // Fallback
+        String text = name;
+        String imgUrl = null;
+        String wikiLink = "https://it.wikipedia.org/wiki/" + wikiTitle;
+
+        if (resp != null) {
+            if (resp.extract != null && !resp.extract.isEmpty())
+                text = "<b>" + name + "</b>\n" + resp.extract;
+
+            if (resp.thumbnail != null && resp.thumbnail.source != null)
+                imgUrl = resp.thumbnail.source;
+
+            // Aggiorna il link per sicurezza
+            if (resp.content_urls != null && resp.content_urls.desktop != null && resp.content_urls.desktop.page != null)
+                wikiLink = resp.content_urls.desktop.page;
+        }else{
+            send("❌ Assicurati di aver usato i nomi corretti!", chatId, false);
+            return;
+        }
+
+        sendContentPicture(null, imgUrl, chatId);
+
+        SendMessage message = SendMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .parseMode("HTML")
+                .replyMarkup(buildLinkButton("🔗 Wikipedia", wikiLink))
+                .build();
+
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("Errore invio messaggio WEC team: " + e.getMessage());
+        }
+    }
+
+    private boolean isValidTelegramImage(String url) {
+        if (url == null)
+            return false;
+
+        String lower = url.toLowerCase();
+        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png");
+    }
+
 }
