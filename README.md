@@ -192,10 +192,10 @@ Estratto di ``POM.xml``:
 
 ---
 
-# 🗣️ Esempi di conversazione
-<img src="assets/start.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
-<img src="assets/photo_video.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
-<img src="assets/f1_status.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
-<img src="assets/basket_wiki.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
-<img src="assets/soccer_wiki.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
-<img src="assets/soccer_example.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
+## 🗣️ Esempi di conversazione
+<img src="assets/start.jpeg" alt="Esempio di utilizzo del bot" width="48%"/>
+<img src="assets/photo_video.jpeg" alt="Esempio di utilizzo del bot" width="48%"/>
+<img src="assets/f1_status.jpeg" alt="Esempio di utilizzo del bot" width="48%"/>
+<img src="assets/basket_wiki.jpeg" alt="Esempio di utilizzo del bot" width="48%"/>
+<img src="assets/soccer_wiki.jpeg" alt="Esempio di utilizzo del bot" width="48%"/>
+<img src="assets/soccer_example.jpeg" alt="Esempio di utilizzo del bot" width="48%"/>
