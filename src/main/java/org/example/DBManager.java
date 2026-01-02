@@ -136,8 +136,8 @@ public class DBManager {
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setInt(1, userId);
             stmt.setInt(2, planId);
-            int affectedRows = stmt.executeUpdate();
-            return affectedRows > 0; // true se è stata eliminata almeno una riga
+            stmt.executeUpdate();
+            return true;
         } catch (SQLException e) {
             System.err.println("Errore delete training_plan: " + e.getMessage());
             return false;
@@ -245,6 +245,23 @@ public class DBManager {
         }
         return days;
     }
+
+    public boolean removeTrainingDay(int trainingDayId) {
+        String query = "DELETE FROM training_days WHERE id = ?";
+
+        if (checkConnection())
+            return false;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, trainingDayId);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Errore delete training_day: " + e.getMessage());
+            return false;
+        }
+    }
+
     //#endregion
 
     //#region user_exercises

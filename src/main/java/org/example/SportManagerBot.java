@@ -48,7 +48,9 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         waiting_wec,
         waiting_basket,
         waiting_soccer,
-        waiting_training
+        waiting_training,
+        waiting_training_day,
+        waiting_exercise
     }
 
     // Le leghe del calcio hanno degli id specifici
@@ -87,6 +89,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         BotState state = userStates.getOrDefault(chatId, BotState.none);
 
         // Gestione degli stati d'attesa del bot
+        String[] args = messageText.split(" ");
         switch(state) {
             case waiting_photo:
                 userStates.put(chatId, BotState.none);
@@ -98,33 +101,33 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 return;
             case waiting_f1:
                 userStates.put(chatId, BotState.none);
-                // Invia l’array degli argomenti come se fosse /f1 <args>
-                String[] f1Args = messageText.split(" ");
-                handleF1Command(f1Args, chatId);
+                handleF1Command(args, chatId);
                 return;
             case waiting_wec:
                 userStates.put(chatId, BotState.none);
-                String[] wecArgs = messageText.split(" ");
-                handleWecCommand(wecArgs, chatId);
+                handleWecCommand(args, chatId);
                 return;
             case waiting_basket:
                 userStates.put(chatId, BotState.none);
-                String[] basketArgs = messageText.split(" ");
-                handleBasketCommand(basketArgs, chatId);
+                handleBasketCommand(args, chatId);
                 return;
             case waiting_soccer:
                 userStates.put(chatId, BotState.none);
-                String[] soccerArgs = messageText.split(" ");
-                handleSoccerCommand(soccerArgs, chatId);
+                handleSoccerCommand(args, chatId);
                 return;
             case waiting_training:
                 userStates.put(chatId, BotState.none);
-                String[] trainingArgs = messageText.split(" ");
-                handleTrainingCommand(trainingArgs, chatId);
+                handleTrainingCommand(args, chatId);
+                return;
+            case waiting_training_day:
+                userStates.put(chatId, BotState.none);
+                handleTrainingDayCommand(args, chatId);
+                return;
+            case waiting_exercise:
+                userStates.put(chatId, BotState.none);
+                handleExerciseCommand(args, chatId);
                 return;
         }
-
-        String[] args = messageText.split(" ");
 
         String mediaMsg = """
                     📸 <b>Che sport vuoi?</b>
@@ -285,6 +288,42 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 } else {
                     String[] trainingArgs = Arrays.copyOfRange(args, 1, args.length);
                     handleTrainingCommand(trainingArgs, chatId);
+                }
+                break;
+            case "/trainingDay":
+                if (args.length == 1) {
+                    userStates.put(chatId, BotState.waiting_training_day);
+                    String msg = """
+                    🗓️ <b>Gestione Giorni di Allenamento</b>
+                    
+                    Comandi disponibili:
+                    
+                    ➕ <b>/trainingDay add &lt;idScheda&gt; &lt;giorno&gt; &lt;focus&gt;</b>
+                    ❌ <b>/trainingDay remove &lt;idGiorno&gt;</b>
+                    📋 <b>/trainingDay list &lt;idScheda&gt;</b>
+                    """;
+                    send(msg, chatId, true);
+                } else {
+                    String[] trainingDayArgs = Arrays.copyOfRange(args, 1, args.length);
+                    handleTrainingDayCommand(trainingDayArgs, chatId);
+                }
+                break;
+            case "/exercise":
+                if (args.length == 1) {
+                    userStates.put(chatId, BotState.waiting_exercise);
+                    String msg = """
+                    🏋️ <b>Gestione Esercizi</b>
+                    
+                    Comandi disponibili:
+                    
+                    ➕ <b>/exercise add &lt;id giorno&gt; &lt;nome&gt; &lt;sets&gt; &lt;reps&gt; &lt;peso&gt; [note]</b>
+                    ❌ <b>/exercise remove &lt;id esercizio&gt;</b>
+                    📋 <b>/exercise list &lt;id giorno&gt;</b>
+                    """;
+                    send(msg, chatId, true);
+                } else {
+                    String[] exerciseArgs = Arrays.copyOfRange(args, 1, args.length);
+                    handleExerciseCommand(exerciseArgs, chatId);
                 }
                 break;
             default:
@@ -1141,6 +1180,11 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
     //#region Training DB
     private void handleTrainingCommand(String[] args, long chatId) {
+        if (args.length == 0) {
+            send("❌ Devi specificare un comando training", chatId, false);
+            return;
+        }
+
         DBManager db = DBManager.getInstance();
         switch (args[0].toLowerCase()) {
             case "new":
@@ -1155,14 +1199,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                 if (args.length == 1)
                     listTrainingPlans(db, chatId);
                 else {
-                    String planIdStr = args[1];
-                    int planId;
-                    try {
-                        planId = Integer.parseInt(planIdStr);
-                    } catch (NumberFormatException e) {
-                        send("⚠️ ID scheda non valida.", chatId, false);
-                        return;
-                    }
+                    int planId = safeParseInt(args[1], chatId, "⚠️ ID scheda non valido.");
 
                     if (args.length == 3 && args[2].equalsIgnoreCase("days"))
                         listTrainingDays(db, chatId, planId);
@@ -1220,13 +1257,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     private void selectTrainingPlan(DBManager db, long chatId, String planIdStr) {
         User user = db.getUserByTelegramId(chatId);
 
-        int planId;
-        try {
-            planId = Integer.parseInt(planIdStr);
-        } catch (NumberFormatException e) {
-            send("⚠️ ID non valido.", chatId, false);
-            return;
-        }
+        int planId = safeParseInt(planIdStr, chatId, "⚠️ ID scheda non valido.");
 
         List<TrainingPlan> plans = db.getTrainingPlans(user.id);
         boolean found = false;
@@ -1253,13 +1284,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     private void deleteTrainingPlan(DBManager db, long chatId, String planIdStr) {
         User user = db.getUserByTelegramId(chatId);
 
-        int planId;
-        try {
-            planId = Integer.parseInt(planIdStr);
-        } catch (NumberFormatException e) {
-            send("⚠️ ID non valido.", chatId, false);
-            return;
-        }
+        int planId = safeParseInt(planIdStr, chatId, "⚠️ ID scheda non valido.");
 
         boolean removed = db.removeTrainingPlan(user.id, planId);
         if (removed)
@@ -1283,11 +1308,10 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
         String msg = "📅 <b>Giorni della scheda \"" + plan.name + "\"</b>\n\n";
         for (TrainingDay day : days)
-            msg = msg.concat("🗓️ ID " + day.id + " – Giorno " + day.dayOfWeek + " – Focus: " + day.focus + "\n");
+            msg = msg.concat("🗓️ ID " + day.id + " - " + dayOfWeekToString(day.dayOfWeek) + " – Focus: " + day.focus + "\n");
 
         send(msg, chatId, true);
     }
-
 
     private void listExercises(DBManager db, long chatId, int planId) {
         TrainingPlan plan = db.getFullTrainingPlan(planId);
@@ -1304,6 +1328,141 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             msg = msg.concat(day.toString() + "\n\n");
 
         send(msg, chatId, true);
+    }
+    //#endregion
+
+    //#region Training day
+    private void handleTrainingDayCommand(String[] args, long chatId) {
+        if (args.length == 0) {
+            send("❌ Devi specificare un comando trainingDay", chatId, false);
+            return;
+        }
+
+        DBManager db = DBManager.getInstance();
+        switch (args[0].toLowerCase()) {
+            case "add":
+                if (args.length < 4) {
+                    send("⚠️ Usa: /trainingDay add <idScheda> <giorno> <focus>", chatId, false);
+                    return;
+                }
+                int planId;
+                int dayOfWeek;
+                try {
+                    planId = Integer.parseInt(args[1]);
+                    dayOfWeek = Integer.parseInt(args[2]); // 1-7
+                    if(dayOfWeek < 1 || dayOfWeek > 7){
+                        send("❌ Giorno non valido: accetto solo da 1 a 7", chatId, false);
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    send("❌ Formato dati non valido", chatId, false);
+                    return;
+                }
+                String focus = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+                addTrainingDay(db, chatId, planId, dayOfWeek, focus);
+                break;
+            case "remove":
+                if (args.length < 2) {
+                    send("⚠️ Usa: /trainingDay remove <idGiorno>", chatId, false);
+                    return;
+                }
+                removeTrainingDay(db, chatId, args[1]);
+                break;
+            case "list":
+                if (args.length < 2) {
+                    send("⚠️ Usa: /trainingDay list <idScheda>", chatId, false);
+                    return;
+                }
+                int id = safeParseInt(args[1], chatId, "⚠️ ID allenamento non valido.");
+                listTrainingDays(db, chatId, id);
+                break;
+            default:
+                send("❌ Comando trainingDay non valido", chatId, false);
+        }
+    }
+
+    private void addTrainingDay(DBManager db, long chatId, int planId, int dayOfWeek, String focus) {
+        boolean created = db.addTrainingDay(planId, dayOfWeek, focus);
+        if (created)
+            send("✅ Giorno di allenamento aggiunto con successo!", chatId, false);
+        else
+            send("❌ Errore durante l'aggiunta del giorno", chatId, false);
+    }
+
+    private void removeTrainingDay(DBManager db, long chatId, String dayIdStr) {
+        int dayId = safeParseInt(dayIdStr, chatId, "⚠️ ID allenamento non valido.");
+
+        boolean removed = db.removeTrainingDay(dayId);
+        if (removed)
+            send("🗑️ Giorno di allenamento rimosso", chatId, false);
+        else
+            send("❌ Errore nella rimozione del giorno", chatId, false);
+    }
+    //endregion
+
+    //#region Exercise
+    private void handleExerciseCommand(String[] args, long chatId) {
+        DBManager db = DBManager.getInstance();
+
+        switch (args[0].toLowerCase()) {
+            case "add":
+                if (args.length < 6) {
+                    send("❌ Uso corretto:\n/exercise add <id giorno> <nome> <sets> <reps> <peso> [note]", chatId, false);
+                    return;
+                }
+                addExercise(db, chatId, args);
+                break;
+            case "remove":
+                if (args.length < 2) {
+                    send("❌ Manca l'id dell'esercizio", chatId, false);
+                    return;
+                }
+                removeExercise(db, chatId, args[1]);
+                break;
+            case "list":
+                if (args.length < 2) {
+                    send("❌ Manca l'id del giorno", chatId, false);
+                    return;
+                }
+                int planId = safeParseInt(args[1], chatId, "⚠️ ID scheda non valido.");
+                listExercises(db, chatId, planId);
+                break;
+            default:
+                send("❌ Comando exercise non valido", chatId, false);
+        }
+    }
+
+    private void addExercise(DBManager db, long chatId, String[] args) {
+        int dayId, sets, reps;
+        double weight;
+
+        try {
+            dayId = Integer.parseInt(args[1]);
+            sets = Integer.parseInt(args[3]);
+            reps = Integer.parseInt(args[4]);
+            weight = Double.parseDouble(args[5]);
+        } catch (NumberFormatException e) {
+            send("⚠️ Errore nei valori numerici.", chatId, false);
+            return;
+        }
+
+        String name = args[2];
+        String notes = args.length > 6 ? String.join(" ", Arrays.copyOfRange(args, 6, args.length)) : null;
+
+        boolean created = db.addUserExercise(dayId, name, sets, reps, weight, notes);
+        if (created)
+            send("✅ Esercizio aggiunto correttamente!", chatId, false);
+        else
+            send("❌ Errore durante l'aggiunta dell'esercizio", chatId, false);
+    }
+
+    private void removeExercise(DBManager db, long chatId, String exerciseIdStr) {
+        int exerciseId = safeParseInt(exerciseIdStr, chatId, "⚠️ ID esercizio non valido.");
+
+        if (db.removeUserExercise(exerciseId))
+            send("✅ Esercizio rimosso.", chatId, false);
+        else
+            send("❌ Errore durante la rimozione dell'esercizio.", chatId, false);
     }
     //#endregion
 
@@ -1437,4 +1596,26 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png");
     }
 
+    // Utilizzo di enhanced switch (consiglio dell'editor)
+    public static String dayOfWeekToString(int day) {
+        return switch (day) {
+            case 1 -> "Lunedì";
+            case 2 -> "Martedì";
+            case 3 -> "Mercoledì";
+            case 4 -> "Giovedì";
+            case 5 -> "Venerdì";
+            case 6 -> "Sabato";
+            case 7 -> "Domenica";
+            default -> "Giorno non valido";
+        };
+    }
+
+    private int safeParseInt(String value, long chatId, String errorMessage) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            send(errorMessage, chatId, false);
+            return -1;
+        }
+    }
 }
