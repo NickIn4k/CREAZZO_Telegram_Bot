@@ -237,7 +237,7 @@ Definisce i giorni della settimana associati a una scheda di allenamento.
 Catalogo degli esercizi disponibili nel bot.
 - id
 - name
-- muscle_group 
+- muscle_group
 - description
 
 ### ``workout_log``
