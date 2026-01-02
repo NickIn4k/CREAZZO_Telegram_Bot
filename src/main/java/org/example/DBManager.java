@@ -364,4 +364,141 @@ public class DBManager {
         return requests;
     }
     //#endregion
+
+    //#region day_exercises
+    public boolean addExerciseToDay(int trainingDayId, int exerciseId, int sets, int reps) {
+        String query = "INSERT INTO day_exercises (training_day_id, exercise_id, sets, reps) VALUES (?, ?, ?, ?)";
+
+        if (checkConnection())
+            return false;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, trainingDayId);
+            stmt.setInt(2, exerciseId);
+            stmt.setInt(3, sets);
+            stmt.setInt(4, reps);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Errore insert day_exercises: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Recupera tutti gli esercizi associati a un giorno
+    public List<DayExercise> getExercisesForDay(int trainingDayId) {
+        String query = "SELECT * FROM day_exercises WHERE training_day_id = ?";
+        List<DayExercise> list = new ArrayList<>();
+
+        if (checkConnection())
+            return list;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, trainingDayId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                list.add(new DayExercise(
+                    rs.getInt("id"),
+                    rs.getInt("training_day_id"),
+                    rs.getInt("exercise_id"),
+                    rs.getInt("sets"),
+                    rs.getInt("reps")
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore select day_exercises: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public boolean removeExerciseFromDay(int dayExerciseId) {
+        String query = "DELETE FROM day_exercises WHERE id = ?";
+
+        if (checkConnection())
+            return false;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, dayExerciseId);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Errore delete day_exercises: " + e.getMessage());
+            return false;
+        }
+    }
+    //#endregion
+
+    // Ritorna l'intera scheda di allenamento con giorni ed esercizi
+    public TrainingPlan getFullTrainingPlan(int trainingPlanId) {
+        if (checkConnection())
+            return null;
+
+        try {
+            TrainingPlan plan = getTrainingPlanById(trainingPlanId);
+
+            if (plan == null)
+                return null;
+
+            List<TrainingDay> days = getTrainingDays(trainingPlanId);
+            for (TrainingDay day : days) {
+                loadExercisesForDay(day);  // Tutti gli esercizi del giorno
+                plan.addTrainingDay(day);
+            }
+
+            return plan;
+        } catch (SQLException e) {
+            System.err.println("Errore getFullTrainingPlan: " + e.getMessage());
+            return null;
+        }
+    }
+
+    //#region helper
+    private TrainingPlan getTrainingPlanById(int planId) throws SQLException {
+        String query = "SELECT * FROM training_plans WHERE id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, planId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (!rs.next())
+                return null;
+
+            return new TrainingPlan(
+                rs.getInt("id"),
+                rs.getInt("user_id"),
+                rs.getString("name"),
+                rs.getBoolean("is_active")
+            );
+        }
+    }
+
+    private void loadExercisesForDay(TrainingDay day) throws SQLException {
+        List<DayExercise> dayExercises = getExercisesForDay(day.id);
+
+        for (DayExercise de : dayExercises) {
+            Exercise ex = getExerciseById(de.exerciseId);
+            if (ex != null)
+                day.addDayExercise(de, ex);
+        }
+    }
+
+    private Exercise getExerciseById(int exerciseId) throws SQLException {
+        String query = "SELECT * FROM exercises WHERE id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, exerciseId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new Exercise(
+                    rs.getInt("id"),
+                    rs.getString("name"),
+                    rs.getString("muscle_group"),
+                    rs.getString("description")
+                );
+            }
+        }
+        return null;
+    }
+    //#endregion
 }
