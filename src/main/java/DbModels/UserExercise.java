@@ -21,7 +21,7 @@ public class UserExercise {
 
     @Override
     public String toString() {
-        String msg = "%s – %d x %d".formatted(name, sets, reps);
+        String msg = "<b>%s</b> – %d x %d".formatted(name, sets, reps);
 
         if (weight > 0)
             msg = msg.concat(" – %.1f kg".formatted(weight));

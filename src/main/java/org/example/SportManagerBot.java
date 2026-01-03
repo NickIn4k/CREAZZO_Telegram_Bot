@@ -1,7 +1,5 @@
 package org.example;
-import DbModels.TrainingDay;
-import DbModels.TrainingPlan;
-import DbModels.User;
+import DbModels.*;
 import Models.ApiFootball.fixtures.FixturesResponse;
 import Models.ApiFootball.standings.League;
 import Models.ApiFootball.standings.StandingsResponse;
@@ -23,7 +21,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
-
+import java.time.LocalDate;
 import java.util.*;
 
 public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
@@ -50,7 +48,8 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         waiting_soccer,
         waiting_training,
         waiting_training_day,
-        waiting_exercise
+        waiting_exercise,
+        waiting_workout
     }
 
     // Le leghe del calcio hanno degli id specifici
@@ -126,6 +125,10 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             case waiting_exercise:
                 userStates.put(chatId, BotState.none);
                 handleExerciseCommand(args, chatId);
+                return;
+            case waiting_workout:
+                userStates.put(chatId, BotState.none);
+                handleWorkoutCommand(args, chatId);
                 return;
         }
 
@@ -264,7 +267,6 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     """;
                     send(msg, chatId, true);
                 } else {
-                    // Rimuove "/soccer" e passa tutto a handleSoccerCommand
                     String[] soccerArgs = Arrays.copyOfRange(args, 1, args.length);
                     handleSoccerCommand(soccerArgs, chatId);
                 }
@@ -277,12 +279,12 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     
                     Comandi disponibili:
                     
-                    ➕ <b>/training new &lt;nome&gt;</b> – Crea una scheda
-                    📋 <b>/training list</b> – Elenco schede
-                    ⭐ <b>/training select &lt;id&gt;</b> – Attiva una scheda
-                    🗑️ <b>/training remove &lt;id&gt;</b> – Rimuovi una scheda
-                    📋 <b>/training list &lt;id&gt; days</b> – Elenco allenamenti
-                    📋 <b>/training list &lt;id&gt; exercises </b> – Elenco esercizi
+                    ➕ <b>new &lt;nome&gt;</b> – Crea una scheda
+                    📋 <b>list</b> – Elenco schede
+                    ⭐ <b>select &lt;id&gt;</b> – Attiva una scheda
+                    🗑️ <b>remove &lt;id&gt;</b> – Rimuovi una scheda
+                    📋 <b>list &lt;id&gt; days</b> – Elenco allenamenti
+                    📋 <b>list &lt;id&gt; exercises </b> – Elenco esercizi
                     """;
                     send(msg, chatId, true);
                 } else {
@@ -298,9 +300,9 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     
                     Comandi disponibili:
                     
-                    ➕ <b>/trainingDay add &lt;idScheda&gt; &lt;giorno&gt; &lt;focus&gt;</b>
-                    ❌ <b>/trainingDay remove &lt;idGiorno&gt;</b>
-                    📋 <b>/trainingDay list &lt;idScheda&gt;</b>
+                    ➕ <b>add &lt;idScheda&gt; &lt;giorno&gt; &lt;focus&gt;</b> - Aggiungi allenamento
+                    ❌ <b>remove &lt;idGiorno&gt;</b> - Elimina allenamento
+                    📋 <b>list &lt;idScheda&gt;</b> - Elenco allenamenti
                     """;
                     send(msg, chatId, true);
                 } else {
@@ -316,14 +318,32 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     
                     Comandi disponibili:
                     
-                    ➕ <b>/exercise add &lt;id giorno&gt; &lt;nome&gt; &lt;sets&gt; &lt;reps&gt; &lt;peso&gt; [note]</b>
-                    ❌ <b>/exercise remove &lt;id esercizio&gt;</b>
-                    📋 <b>/exercise list &lt;id giorno&gt;</b>
+                    ➕ <b>add &lt;id giorno&gt; &lt;nome&gt; # &lt;sets&gt; &lt;reps&gt; &lt;peso&gt; # [note]</b> - Aggiungi esercizio
+                    ❌ <b>remove &lt;id esercizio&gt;</b> - Elimina esercizio
+                    📋 <b>list &lt;id scheda&gt;</b> - Elenco esercizi
                     """;
                     send(msg, chatId, true);
                 } else {
                     String[] exerciseArgs = Arrays.copyOfRange(args, 1, args.length);
                     handleExerciseCommand(exerciseArgs, chatId);
+                }
+                break;
+            case "/workout":
+                if (args.length == 1) {
+                    userStates.put(chatId, BotState.waiting_workout);
+                    String msg = """
+                    🏃‍♂️ <b>Gestione Allenamenti Svolti</b>
+                    
+                    Comandi disponibili:
+                    
+                    ▶️ <b>start &lt;id giorno&gt;</b> – Inizia una sessione di allenamento
+                    ✅ <b>complete &lt;id sessione&gt;</b> – Completa una sessione
+                    📊 <b>list &lt;id giorno&gt;</b> – Elenco sessioni registrate
+                    """;
+                    send(msg, chatId, true);
+                } else {
+                    String[] workoutArgs = Arrays.copyOfRange(args, 1, args.length);
+                    handleWorkoutCommand(workoutArgs, chatId);
                 }
                 break;
             default:
@@ -407,7 +427,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         /trainingDay remove &lt;id giorno&gt; – Rimuovi un giorno dalla scheda
         /trainingDay list &lt;id scheda&gt; – Elenco giorni di allenamento della scheda
         
-        /exercise add &lt;id giorno&gt; &lt;nome esercizio&gt; &lt;sets&gt; &lt;reps&gt; &lt;peso&gt; [note] – Aggiungi un esercizio
+        /exercise add &lt;id giorno&gt; &lt;nome esercizio&gt; # &lt;sets&gt; &lt;reps&gt; &lt;peso&gt; # [note] – Aggiungi un esercizio
         /exercise remove &lt;id esercizio&gt; – Rimuovi un esercizio
         /exercise list &lt;id giorno&gt; – Elenco esercizi del giorno
         
@@ -1288,7 +1308,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
         boolean removed = db.removeTrainingPlan(user.id, planId);
         if (removed)
-            send("✅ Scheda rimossa correttamente!", chatId, false);
+            send("🗑️ Scheda rimossa correttamente!", chatId, false);
         else
             send("❌ Errore durante la rimozione della scheda", chatId, false);
     }
@@ -1308,7 +1328,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
         String msg = "📅 <b>Giorni della scheda \"" + plan.name + "\"</b>\n\n";
         for (TrainingDay day : days)
-            msg = msg.concat("🗓️ ID " + day.id + " - " + dayOfWeekToString(day.dayOfWeek) + " – Focus: " + day.focus + "\n");
+            msg = msg.concat("🆔 " + day.id + " - " + dayOfWeekToString(day.dayOfWeek) + " – Focus: " + day.focus + "\n");
 
         send(msg, chatId, true);
     }
@@ -1325,7 +1345,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
 
         String msg = "📋 <b>Esercizi della scheda</b>\n\n";
         for (TrainingDay day : plan.getTrainingDays())
-            msg = msg.concat(day.toString() + "\n\n");
+            msg = msg.concat(day.toString() + "\n");
 
         send(msg, chatId, true);
     }
@@ -1424,8 +1444,8 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     send("❌ Manca l'id del giorno", chatId, false);
                     return;
                 }
-                int planId = safeParseInt(args[1], chatId, "⚠️ ID scheda non valido.");
-                listExercises(db, chatId, planId);
+                int planId = safeParseInt(args[1], chatId, "⚠️ ID giorno non valido.");
+                listDayExercises(db, chatId, planId);
                 break;
             default:
                 send("❌ Comando exercise non valido", chatId, false);
@@ -1433,21 +1453,42 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void addExercise(DBManager db, long chatId, String[] args) {
-        int dayId, sets, reps;
-        double weight;
+        String combined = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        String[] parts = combined.split("#");
 
-        try {
-            dayId = Integer.parseInt(args[1]);
-            sets = Integer.parseInt(args[3]);
-            reps = Integer.parseInt(args[4]);
-            weight = Double.parseDouble(args[5]);
-        } catch (NumberFormatException e) {
-            send("⚠️ Errore nei valori numerici.", chatId, false);
+        if (parts.length < 2) {
+            send("⚠️ Formato comando non valido. Usa:\n/exercise add <id giorno> <nome esercizio> # <sets> <reps> <peso> # [note opzionali]", chatId, false);
             return;
         }
 
-        String name = args[2];
-        String notes = args.length > 6 ? String.join(" ", Arrays.copyOfRange(args, 6, args.length)) : null;
+        // Prima parte
+        String[] firstPart = parts[0].trim().split(" ", 2); // separa solo il primo spazio
+        if (firstPart.length < 2) {
+            send("⚠️ Inserisci ID giorno e nome esercizio.", chatId, false);
+            return;
+        }
+        int dayId = safeParseInt(firstPart[0], chatId, "❌ ID non valido!");
+        String name = firstPart[1].trim();
+
+        // Seconda parte: sets, reps, peso
+        String[] secondPart = parts[1].trim().split(" ");
+        if (secondPart.length < 3) {
+            send("⚠️ Inserisci sets, reps e peso.", chatId, false);
+            return;
+        }
+        int sets = safeParseInt(secondPart[0], chatId, "❌ Numero set non valido!");
+        int reps = safeParseInt(secondPart[1], chatId, "❌ Numero reps non valido!");
+        double weight = 0.0f;
+        if(sets == -1 || reps == -1)
+            return;
+        try{
+            weight = Double.parseDouble(secondPart[2]);
+        } catch (NumberFormatException e) {
+            send("❌ Peso non valido!", chatId, false);
+        }
+
+        // Terza parte: note (opzionale)
+        String notes = parts.length >= 3 ? parts[2].trim() : null;
 
         boolean created = db.addUserExercise(dayId, name, sets, reps, weight, notes);
         if (created)
@@ -1460,12 +1501,123 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         int exerciseId = safeParseInt(exerciseIdStr, chatId, "⚠️ ID esercizio non valido.");
 
         if (db.removeUserExercise(exerciseId))
-            send("✅ Esercizio rimosso.", chatId, false);
+            send("🗑️ Esercizio rimosso.", chatId, false);
         else
             send("❌ Errore durante la rimozione dell'esercizio.", chatId, false);
     }
+
+    private void listDayExercises(DBManager db, long chatId, int dayId) {
+        List<UserExercise> exercises = db.getUserExercises(dayId);
+
+        if (exercises.isEmpty()) {
+            send("❌ Non ci sono esercizi registrati per questo giorno.", chatId, false);
+            return;
+        }
+
+        String msg = "📋 <b>Esercizi del giorno</b>\n\n";
+        for (UserExercise ex : exercises)
+            msg = msg.concat(ex.toString()).concat("\n");
+
+        send(msg, chatId, true);
+    }
     //#endregion
 
+    //#region workout
+    private void handleWorkoutCommand(String[] args, long chatId) {
+        DBManager db = DBManager.getInstance();
+
+        if (args.length < 1) {
+            send("❌ Comando workout non valido.", chatId, false);
+            return;
+        }
+
+        switch (args[0].toLowerCase()) {
+            case "start":
+                if (args.length < 2) {
+                    send("❌ Manca l'id del giorno.", chatId, false);
+                    return;
+                }
+                startWorkoutSession(db, chatId, args[1]);
+                break;
+            case "complete":
+                if (args.length < 2) {
+                    send("❌ Manca l'id della sessione.", chatId, false);
+                    return;
+                }
+                completeWorkoutSession(db, chatId, args[1]);
+                break;
+            case "list":
+                if (args.length < 2) {
+                    send("❌ Manca l'id del giorno.", chatId, false);
+                    return;
+                }
+                listWorkoutSession(db, chatId, args[1]);
+                break;
+            default:
+                send("❌ Comando workout non valido.", chatId, false);
+                break;
+        }
+    }
+
+    private void startWorkoutSession(DBManager db, long chatId, String dayIdStr){
+        int dayId = safeParseInt(dayIdStr, chatId, "⚠️ ID giorno non valido.");
+        if(dayId == -1)
+            return;
+
+        //check della data
+        int today = LocalDate.now().getDayOfWeek().getValue();
+        int dayOfWeek = db.getTrainingDayOfWeek(dayId);
+
+        if(dayOfWeek == -1){
+            send("⚠️ ID giorno non valido.", chatId, false);
+            return;
+        }
+        else if(today < dayOfWeek){
+            send("""
+                    ⛔ <b>Questo allenamento è previsto per un giorno futuro!</b> ⛔
+                    Puoi iniziare solo allenamenti di oggi o precedenti.
+                    """, chatId, true);
+            return;
+        }
+
+        if (db.addWorkoutSession(dayId))
+            send("🏋️ Sessione di allenamento avviata!", chatId, false);
+        else
+            send("❌ Errore avvio sessione.", chatId, false);
+    }
+
+    private void completeWorkoutSession(DBManager db, long chatId, String sessionIdStr) {
+        int sessionId = safeParseInt(sessionIdStr, chatId, "⚠️ ID sessione non valido.");
+        if(sessionId == -1)
+            return;
+
+        if (db.completeWorkoutSession(sessionId))
+            send("🏋️ Sessione completata!", chatId, false);
+        else
+            send("❌ Sessione non trovata.", chatId, false);
+    }
+
+    private void listWorkoutSession(DBManager db, long chatId, String dayIdStr) {
+        int id = safeParseInt(dayIdStr, chatId, "⚠️ ID giorno non valido.");
+        if(id == -1)
+            return;
+
+        var sessions = db.getWorkoutSessions(id);
+
+        if (sessions.isEmpty()) {
+            send("🧐 Nessuna sessione registrata.", chatId, false);
+            return;
+        }
+
+        String msg = "📊 <b>Sessioni di allenamento</b>\n\n";
+        for (WorkoutSession session : sessions)
+            msg = msg.concat(session.toString()).concat("\n\n");
+
+        send(msg, chatId, true);
+    }
+    //#endregion
+
+    //#region Helper
     // Metodi extra per evitare ripetizione codice
     private void send(String msg, long chatId, boolean html) {
         SendMessage.SendMessageBuilder builder = SendMessage.builder()
@@ -1618,4 +1770,5 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
             return -1;
         }
     }
+    //#endregion
 }

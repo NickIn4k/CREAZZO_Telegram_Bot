@@ -262,6 +262,24 @@ public class DBManager {
         }
     }
 
+    public int getTrainingDayOfWeek(int trainingDayId) {
+        String query = "SELECT day_of_week FROM training_days WHERE id = ?";
+
+        if (checkConnection())
+            return -1;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, trainingDayId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next())
+                return rs.getInt("day_of_week");
+
+        } catch (SQLException e) {
+            System.err.println("Errore getTrainingDayOfWeek: " + e.getMessage());
+        }
+        return -1;
+    }
     //#endregion
 
     //#region user_exercises
@@ -332,7 +350,7 @@ public class DBManager {
 
     //#region workout_sessions
     public boolean addWorkoutSession(int trainingDayId) {
-        String query = "INSERT INTO workout_sessions (training_day_id, completed) VALUES (?, 1)";
+        String query = "INSERT INTO workout_sessions (training_day_id, execution_date, completed) VALUES (?, CURRENT_TIMESTAMP, false)";
 
         if (checkConnection())
             return false;
@@ -348,7 +366,7 @@ public class DBManager {
     }
 
     public List<WorkoutSession> getWorkoutSessions(int trainingDayId) {
-        String query = " SELECT * FROM workout_sessions WHERE training_day_id = ? GROUP BY execution_date ORDER BY  DESC";
+        String query = " SELECT * FROM workout_sessions WHERE training_day_id = ? ORDER BY execution_date DESC";
 
         List<WorkoutSession> list = new ArrayList<>();
 
@@ -375,7 +393,7 @@ public class DBManager {
     }
 
     public WorkoutSession getLastWorkoutSession(int trainingDayId) {
-        String query = "SELECT * FROM workout_sessions WHERE training_day_id = ? GROUP BY execution_date ORDER BY DESC LIMIT 1 ";
+        String query = "SELECT * FROM workout_sessions WHERE training_day_id = ? ORDER BY execution_date DESC LIMIT 1 ";
 
         if (checkConnection())
             return null;
@@ -418,6 +436,23 @@ public class DBManager {
 
         return 0;
     }
+
+    public boolean completeWorkoutSession(int sessionId) {
+        String query = "UPDATE workout_sessions SET completed = true WHERE id = ?";
+
+        if (checkConnection())
+            return false;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, sessionId);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Errore update workout_session: " + e.getMessage());
+            return false;
+        }
+    }
+
     //#endregion
 
     //#region favorites

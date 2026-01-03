@@ -22,4 +22,14 @@ public class WorkoutSession {
         this.completed = true;
         this.executionDate = LocalDateTime.now();
     }
+
+    @Override
+    public String toString() {
+        return "🕒 Sessione #%d\nData: %s\nStato: %s"
+                .formatted(
+                    id,
+                    executionDate,
+                    completed ? "✅ Completata" : "⏳ In corso"
+                );
+    }
 }

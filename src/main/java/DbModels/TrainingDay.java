@@ -29,14 +29,14 @@ public class TrainingDay {
 
     @Override
     public String toString() {
-        String msg = "🗓️ Giorno %d – Focus: %s\n".formatted(dayOfWeek, focus);
+        String msg = "🗓️ <b>Giorno %d – Focus: %s</b>\n\n".formatted(dayOfWeek, focus);
 
         if (exercises.isEmpty())
-            msg = msg.concat("   ⚠️ Nessun esercizio definito\n");
+            msg = msg.concat(" ⚠️ Nessun esercizio definito\n");
         else {
             int i = 1;
             for (UserExercise ex : exercises) {
-                msg = msg.concat("Esercizio " + i + ":\n" + ex.toString() + "\n");
+                msg = msg.concat("ℹ️  Esercizio <b>" + i + "</b>:\n" + ex.toString() + "\n");
                 i++;
             }
         }
