@@ -334,7 +334,7 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
                     
                     ➕ <b>add &lt;id giorno&gt; &lt;nome&gt; # &lt;sets&gt; &lt;reps&gt; &lt;peso&gt; # [note]</b> - Aggiungi esercizio
                     ❌ <b>remove &lt;id esercizio&gt;</b> - Elimina esercizio
-                    📋 <b>list &lt;id scheda&gt;</b> - Elenco esercizi
+                    📋 <b>list &lt;id giorno&gt;</b> - Elenco esercizi
                     
                     ℹ️ Maggiori info con il comando <b>/help</b>
                     """;
@@ -478,11 +478,11 @@ public class SportManagerBot implements LongPollingSingleThreadUpdateConsumer {
         /soccer &lt;lega&gt; team &lt;nome&gt – Info team
         
         😂 <b>Meme sportivi</b>
-        🏎️ /meme f1 – Meme Formula 1
-        🏁 /meme wec – Meme WEC
-        🏀 /meme nba – Meme NBA
-        ⚽ /meme soccer – Meme Calcio
-        🎲 /meme random – Meme casuale
+        /meme f1 – Meme Formula 1
+        /meme wec – Meme WEC
+        /meme nba – Meme NBA
+        /meme soccer – Meme Calcio
+        /meme random – Meme casuale
         
         🏋️ <b>Personal Trainer</b>
         /training new &lt;nome&gt; – Crea nuova scheda

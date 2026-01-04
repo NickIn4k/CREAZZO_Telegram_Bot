@@ -189,6 +189,55 @@ Estratto di ``POM.xml``:
 /soccer <lega> team <nome> – Info team
 ```
 
+### Meme sportivi
+```
+/meme f1 – Meme Formula 1
+/meme wec – Meme WEC
+/meme nba – Meme NBA
+/meme soccer – Meme Calcio
+/meme random – Meme casuale
+```
+
+### Personal Trainer
+```
+/training new <nome> – Crea nuova scheda
+/training list – Elenco schede
+/training select <id> – Attiva una scheda
+/training remove <id> – Rimuovi una scheda
+/training list <id> days – Elenco giorni di allenamento della scheda
+/training list <id> exercises – Elenco esercizi della scheda
+```
+
+### Giorni di allenamento
+```
+/trainingday add <id scheda> <nome giorno> – Aggiungi un giorno alla scheda
+/trainingday remove <id giorno> – Rimuovi un giorno dalla scheda
+/trainingday list <id scheda> – Elenco giorni di allenamento della scheda
+```
+
+### Esercizi
+```
+/exercise add <id giorno> <nome esercizio> # <sets> <reps> <peso> # [note] – Aggiungi un esercizio
+/exercise remove <id esercizio> – Rimuovi un esercizio
+/exercise list <id giorno> – Elenco esercizi del giorno
+```
+
+### Allenamenti
+```
+/workout start <id giorno> – Inizia sessione di allenamento
+/workout complete <id sessione> – Completa sessione di allenamento
+/workout list – Elenco sessioni di allenamento registrate
+```
+
+### Personal Trainer
+```
+/stats workout done – Conteggio totale delle sessioni completate
+/stats workout last – Mostra l'ultima sessione completata
+/stats api top – Mostra l'API più utilizzata
+/stats api last – Mostra l'ultima API usata
+/stats api summary – Riassume le chiamate API
+```
+
 ---
 
 ## 🗣️ Esempi di conversazione
@@ -198,6 +247,10 @@ Estratto di ``POM.xml``:
 <img src="assets/basket_wiki.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
 <img src="assets/soccer_wiki.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
 <img src="assets/soccer_example.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
+<img src="assets/training.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
+<img src="assets/daytraining.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
+<img src="assets/exercise.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
+<img src="assets/meme.jpeg" alt="Esempio di utilizzo del bot" width="49%"/>
 
 ---
 
@@ -258,7 +311,7 @@ Registra le richieste effettuate alle API REST per analizzare le preferenze degl
 - entity
 - endpoint
 - requested_at
-- 
+
 ### ``memes``
 Contiene meme caricati manualmente per un accesso randomico su richiesta.
 - id
@@ -276,4 +329,65 @@ users
  └── api_requests
  
  memes
+```
+
+## 📊 Database Cool Queries & Statistics
+Il progetto include diverse query SQL e metodi di aggregazione già implementati all’interno della classe `DBManager`, utilizzate per ottenere statistiche e informazioni utili sull’attività degli utenti, gli allenamenti e l’utilizzo delle API.
+
+### 👤 User Statistics
+**Recupero utente tramite Telegram ID**
+```sql
+SELECT * FROM users WHERE telegram_id = ?
+```
+
+### 🏋️ Training Plans & Workouts
+**Conteggio allenamenti completati nel piano attivo**
+```sql
+SELECT COUNT(ws.id)
+FROM workout_sessions ws
+JOIN training_days td ON ws.training_day_id = td.id
+JOIN training_plans tp ON td.plan_id = tp.id
+WHERE tp.user_id = ?
+AND tp.is_active = 1
+AND ws.completed = 1
+```
+
+**Ultima sessione di allenamento eseguita**
+```sql
+SELECT ws.*
+FROM workout_sessions ws
+JOIN training_days td ON ws.training_day_id = td.id
+JOIN training_plans tp ON td.plan_id = tp.id
+WHERE tp.user_id = ?
+AND tp.is_active = 1
+ORDER BY ws.execution_date DESC
+LIMIT 1
+```
+
+### 🌐 API Usage Statistics
+**Ultima richiesta API effettuata da un utente**
+```sql
+SELECT * FROM api_requests
+WHERE user_id = ?
+ORDER BY requested_at DESC
+LIMIT 1
+```
+
+**API più utilizzata da un utente**
+```sql
+SELECT sport, entity, endpoint, COUNT(*) AS total
+FROM api_requests
+WHERE user_id = ?
+GROUP BY sport, entity, endpoint
+ORDER BY total DESC
+LIMIT 1
+```
+
+### 😂 Sport Memes
+**Meme casuale per sport**
+```sql
+SELECT * FROM sport_memes
+WHERE category = ?
+ORDER BY RANDOM()
+LIMIT 1
 ```
