@@ -2,6 +2,7 @@ package org.example;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /*
@@ -24,7 +25,7 @@ public class Crypto {
         cipher.init(Cipher.ENCRYPT_MODE, key);
 
         // Cripta la stringa
-        byte[] encrypted = cipher.doFinal(input.getBytes("UTF-8"));
+        byte[] encrypted = cipher.doFinal(input.getBytes(StandardCharsets.UTF_8));
 
         // Codifica in Base64 per salvare in DB
         return Base64.getEncoder().encodeToString(encrypted);
@@ -43,6 +44,6 @@ public class Crypto {
         byte[] decoded = Base64.getDecoder().decode(input);
         byte[] decrypted = cipher.doFinal(decoded);
 
-        return new String(decrypted, "UTF-8");
+        return new String(decrypted, StandardCharsets.UTF_8);
     }
 }
